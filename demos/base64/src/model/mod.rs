@@ -1,29 +1,40 @@
 use base64::{engine::general_purpose, Engine};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Model {
-    pub decode: String,
-    pub encode: String,
-    pub font: i32,
-    pub size: i32,
+    focus: i32,
+    decode: String,
+    encode: String,
 }
 
 impl Model {
     pub fn default() -> Self {
         Self {
+            focus: 0,
             decode: String::from("Normal text"),
             encode: String::from("Base64 text"),
-            font: 0,
-            size: 14,
         }
     }
-    pub fn encode(&mut self) {
-        self.encode = general_purpose::STANDARD.encode(&self.decode);
+    pub fn decode(&self) -> String {
+        self.decode.clone()
     }
-    pub fn decode(&mut self) {
+    pub fn encode(&self) -> String {
+        self.encode.clone()
+    }
+    pub fn set_encode(&mut self, value: String) {
+        self.encode = value;
         self.decode = match general_purpose::STANDARD.decode(&self.encode) {
             Ok(decode) => String::from_utf8(decode).unwrap(),
             Err(error) => format!("{}", error),
-        }
+        };
+        self.focus = 2;
+    }
+    pub fn focus(&self) -> i32 {
+        self.focus
+    }
+    pub fn set_decode(&mut self, value: String) {
+        self.decode = value;
+        self.encode = general_purpose::STANDARD.encode(&self.decode);
+        self.focus = 0;
     }
 }

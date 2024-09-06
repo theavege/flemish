@@ -113,7 +113,8 @@ pub trait Sandbox {
             fltk_theme::ColorTheme::from_colormap(color_map)
         } else {
             fltk_theme::ColorTheme::from_colormap(fltk_theme::color_themes::GRAY_THEME)
-        }.apply();
+        }
+        .apply();
         if let Some(theme) = settings.theme {
             fltk_theme::WidgetTheme::new(theme).apply();
         }
