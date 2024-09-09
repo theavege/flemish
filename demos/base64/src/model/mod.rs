@@ -15,11 +15,11 @@ impl Model {
             encode: String::from("Base64 text"),
         }
     }
-    pub fn decode(&self) -> String {
-        self.decode.clone()
+    pub fn decode(&self) -> &String {
+        &self.decode
     }
-    pub fn encode(&self) -> String {
-        self.encode.clone()
+    pub fn encode(&self) -> &String {
+        &self.encode
     }
     pub fn set_encode(&mut self, value: String) {
         self.encode = value;

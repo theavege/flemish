@@ -48,10 +48,10 @@ impl Sandbox for Model {
     fn view(&mut self) {
         let mut page = Flex::default_fill();
         {
-            crate::build_editor("Normal text", &self.decode())
+            crate::build_editor("Normal text", self.decode())
                 .on_event(move |text| Message::Decode(text.buffer().unwrap().text()));
             Frame::default();
-            crate::build_editor("Base64 text", &self.encode())
+            crate::build_editor("Base64 text", self.encode())
                 .on_event(move |text| Message::Encode(text.buffer().unwrap().text()));
         }
         page.end();
