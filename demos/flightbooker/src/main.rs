@@ -3,9 +3,11 @@
 mod model;
 
 use {
+    chrono::prelude::*,
     flemish::{
-        button::Button, color_themes, dialog::alert_default, enums::FrameType, frame::Frame,
-        group::Flex, input::Input, menu::Choice, prelude::*, OnEvent, Sandbox, Settings,
+        button::Button, cascade, color_themes, dialog::alert_default, enums::FrameType,
+        frame::Frame, group::Flex, menu::Choice, output::Output, prelude::*, Calendar, OnEvent,
+        Sandbox, Settings,
     },
     model::Model,
 };
@@ -24,7 +26,7 @@ const HEIGHT: i32 = PAD * 3;
 const WIDTH: i32 = PAD * 12;
 
 #[derive(Clone)]
-pub enum Message {
+pub enum Msg {
     Direct(i32),
     Start(String),
     Back(String),
@@ -32,7 +34,7 @@ pub enum Message {
 }
 
 impl Sandbox for Model {
-    type Message = Message;
+    type Message = Msg;
 
     fn title(&self) -> String {
         String::from(NAME)
@@ -43,42 +45,53 @@ impl Sandbox for Model {
     }
 
     fn view(&mut self) {
-        let mut page = Flex::default()
-            .with_size(PAD * 26, PAD * 17)
-            .center_of_parent();
-        {
-            page.fixed(&Frame::default(), WIDTH);
-            let mut right = Flex::default().column();
-            crate::choice(self.direct, &mut right)
-                .with_label("Direct")
-                .on_event(move |choice| Message::Direct(choice.value()));
-            crate::input(&self.start, self.start_active)
-                .with_label("Start")
-                .on_event(move |input| Message::Start(input.value()));
-            crate::input(&self.back, self.back_active)
-                .with_label("Back")
-                .on_event(move |input| Message::Back(input.value()));
-            crate::button(self.book_active, &mut right)
-                .with_label("Book")
-                .clone()
-                .on_event(move |_| Message::Book);
-            right.end();
-            right.set_pad(PAD);
-            page.end();
-            page.set_pad(0);
-            page.set_margin(PAD);
-            page.set_frame(FrameType::UpBox);
-        }
-        page.set_margin(PAD);
-        page.set_pad(PAD);
+        cascade!(
+            Flex::default().with_size(PAD * 26, PAD * 17).center_of_parent();
+            ..set_pad(PAD);
+            ..set_margin(PAD);
+            ..set_frame(FrameType::UpBox);
+            ..fixed(&Frame::default(), WIDTH);
+            ..add(&cascade!(
+                Flex::default().column();
+                ..fixed(&cascade!(
+                    Choice::default().with_label("Direct");
+                    ..add_choice("one-way flight|return flight");
+                    ..set_value(self.direct);
+                    ..clone().on_event(move |choice| Msg::Direct(choice.value()));
+                ), HEIGHT);
+                ..fixed(&cascade!(
+                    crate::input(&self.start, self.start_active).with_label("Start");
+                    ..clone().on_event(move |_| {
+                        if let Some(date) = Calendar::default().get_date() {
+                            Msg::Start(format!("{}-{}-{}", date.year(), date.month(), date.day()));
+                        }
+                    });
+                ), HEIGHT);
+                ..fixed(&cascade!(
+                    crate::input(&self.back, self.back_active).with_label("Back");
+                    ..clone().on_event(move |_| {
+                        if let Some(date) = Calendar::default().get_date() {
+                            Msg::Back(format!("{}-{}-{}", date.year(), date.month(), date.day()));
+                        }
+                    });
+                ), HEIGHT);
+                ..fixed(&cascade!(
+                    crate::button(self.book_active).with_label("Book");
+                        ..clone().on_event(move |_| Msg::Book);
+                ), HEIGHT);
+                ..end();
+                ..set_pad(PAD);
+            ));
+        )
+        .end();
     }
 
-    fn update(&mut self, message: Message) {
+    fn update(&mut self, message: Msg) {
         match message {
-            Message::Direct(value) => self.direct(value),
-            Message::Start(value) => self.start(value),
-            Message::Back(value) => self.back(value),
-            Message::Book => {
+            Msg::Direct(value) => self.direct(value),
+            Msg::Start(value) => self.start(value),
+            Msg::Back(value) => self.back(value),
+            Msg::Book => {
                 alert_default(&if self.direct == 0 {
                     format!("You have booked a one-way flight for {}.", self.start)
                 } else {
@@ -92,32 +105,21 @@ impl Sandbox for Model {
     }
 }
 
-fn input(value: &str, active: bool) -> Input {
-    let mut element = Input::default();
+fn input(value: &str, active: bool) -> Output {
+    let mut element = Output::default();
     element.set_value(value);
-    if active {
-        element.activate();
-    } else {
-        element.deactivate();
+    match active {
+        true => element.activate(),
+        false => element.deactivate(),
     };
     element
 }
 
-fn choice(value: i32, flex: &mut Flex) -> Choice {
-    let mut element = Choice::default();
-    element.add_choice("one-way flight|return flight");
-    element.set_value(value);
-    flex.fixed(&element, HEIGHT);
-    element
-}
-
-fn button(active: bool, flex: &mut Flex) -> Button {
+fn button(active: bool) -> Button {
     let mut element = Button::default();
-    if active {
-        element.activate();
-    } else {
-        element.deactivate();
+    match active {
+        true => element.activate(),
+        false => element.deactivate(),
     };
-    flex.fixed(&element, HEIGHT);
     element
 }

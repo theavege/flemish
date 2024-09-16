@@ -2,8 +2,10 @@
 #![allow(clippy::needless_doctest_main)]
 
 use fltk::prelude::*;
+pub use cascade::cascade;
 pub use fltk::*;
 pub use fltk_theme::*;
+pub use fltk_calendar::calendar::*;
 
 pub trait OnEvent<T>
 where
@@ -188,9 +190,9 @@ pub trait Sandbox {
                 self.update(msg);
                 win.clear();
                 win.begin();
-                win.set_label(&self.title());
                 self.view();
                 win.end();
+                win.set_label(&self.title());
                 app::redraw();
             }
         }

@@ -6,12 +6,12 @@ use {
     flemish::{
         app,
         button::Button,
-        color_themes,
-        enums::{Color, Event, Font, FrameType},
+        cascade, color_themes,
+        enums::{CallbackTrigger, Color, Event, Font, FrameType},
         frame::Frame,
-        group::Flex,
-        menu::Choice,
+        group::{Flex, FlexType},
         image::SvgImage,
+        menu::Choice,
         misc::{InputChoice, Progress},
         prelude::*,
         text::{StyleTableEntry, TextBuffer, TextDisplay, WrapMode},
@@ -35,14 +35,14 @@ fn main() {
 }
 
 #[derive(Clone)]
-pub enum Message {
+pub enum Msg {
     Method(u8),
     Url(String),
     Thread,
 }
 
 impl Sandbox for Model {
-    type Message = Message;
+    type Message = Msg;
 
     fn new() -> Self {
         Model::default()
@@ -53,38 +53,53 @@ impl Sandbox for Model {
     }
 
     fn view(&mut self) {
-        let mut page = Flex::default_fill().column();
-        let mut header = Flex::default();
-        header.fixed(&Frame::default(), WIDTH);
-        crate::choice(self.method as i32, &mut header)
-            .with_label("Method: ")
-            .on_event(move |choice| Message::Method(choice.value() as u8));
-        header.fixed(&Frame::default(), WIDTH);
-        crate::input(&self.url).on_event(move |input| Message::Url(input.value().unwrap()));
-        crate::button(&mut header).on_event(move |_| Message::Thread);
-        header.end();
-        crate::text(&self.responce);
-        let mut footer = Flex::default();
-        footer.fixed(&Frame::default().with_label("Status: "), WIDTH);
-        Frame::default();
-        footer.fixed(&crate::progress().with_label(&self.status), WIDTH);
-        footer.end();
-        page.end();
-        {
-            header.set_pad(0);
-            page.set_pad(PAD);
-            page.set_margin(PAD);
-            page.set_frame(FrameType::FlatBox);
-            page.fixed(&header, HEIGHT);
-            page.fixed(&footer, HEIGHT);
-        }
+        cascade!(
+            Flex::default_fill();
+            ..set_pad(PAD);
+            ..set_margin(PAD);
+            ..set_frame(FrameType::FlatBox);
+            ..set_type(FlexType::Column);
+            ..fixed(&cascade!(
+                Flex::default(); //HEADER
+                ..set_pad(0);
+                ..fixed(&Frame::default(), WIDTH);
+                ..fixed(&cascade!(
+                    Choice::default();
+                    ..add_choice("GET|POST");
+                    ..set_label("Method: ");
+                    ..set_value(self.method as i32);
+                    ..clone().on_event(move |choice| Msg::Method(choice.value() as u8));
+                ), WIDTH);
+                ..fixed(&Frame::default(), WIDTH);
+                ..add(&cascade!(
+                    input(&self.url);
+                    ..clone().on_event(move |input| Msg::Url(input.value().unwrap()));
+                ));
+                ..fixed(&cascade!(
+                    Button::default();
+                    ..set_label("@#search");
+                    ..set_label_size(18);
+                    ..clone().on_event(move |_| Msg::Thread);
+                ), HEIGHT);
+                ..end();
+            ), HEIGHT);
+            ..add(&build_display("Responce", &self.responce));
+            ..fixed(&cascade!(
+                Flex::default();
+                ..fixed(&Frame::default().with_label("Status: "), WIDTH);
+                ..add(&Frame::default());
+                ..fixed(&crate::progress().with_label(&self.status), WIDTH);
+                ..end();
+            ), HEIGHT);
+        )
+        .end();
     }
 
-    fn update(&mut self, message: Message) {
+    fn update(&mut self, message: Msg) {
         match message {
-            Message::Method(value) => self.method = value,
-            Message::Url(value) => self.url = value,
-            Message::Thread => {
+            Msg::Method(value) => self.method = value,
+            Msg::Url(value) => self.url = value,
+            Msg::Thread => {
                 let clone = self.clone();
                 let handler = std::thread::spawn(move || -> (bool, String) { clone.click() });
                 while !handler.is_finished() {
@@ -107,56 +122,23 @@ impl Sandbox for Model {
 
 fn progress() -> Progress {
     const MAX: u8 = 120;
-    let mut element = Progress::default();
-    element.set_maximum((MAX / 4 * 3) as f64);
-    element.set_value(element.minimum());
-    element.handle(move |progress, event| {
-        if event == crate::SPINNER {
-            progress.set_value(if progress.value() == (MAX - 1) as f64 {
-                progress.minimum()
+    cascade!(
+        Progress::default();
+        ..set_maximum((MAX / 4 * 3) as f64);
+        ..set_value(MAX as f64);
+        ..handle(move |progress, event| {
+            if event == crate::SPINNER {
+                progress.set_value(if progress.value() == (MAX - 1) as f64 {
+                    progress.minimum()
+                } else {
+                    progress.value() + 1f64
+                });
+                true
             } else {
-                progress.value() + 1f64
-            });
-            true
-        } else {
-            false
-        }
-    });
-    element
-}
-
-fn choice(value: i32, flex: &mut Flex) -> Choice {
-    let mut element = Choice::default();
-    element.add_choice("GET|POST");
-    element.set_value(value);
-    flex.fixed(&element, WIDTH);
-    element
-}
-
-fn text(value: &str) {
-    let mut buffer = TextBuffer::default();
-    buffer.set_text(&crate::fill_style_buffer(value));
-    let styles: Vec<StyleTableEntry> = [0xdc322f, 0x268bd2, 0x859900]
-        .into_iter()
-        .map(|color| StyleTableEntry {
-            color: Color::from_hex(color),
-            font: Font::Courier,
-            size: 16,
-        })
-        .collect();
-    let mut element = TextDisplay::default();
-    element.wrap_mode(WrapMode::AtBounds, 0);
-    element.set_buffer(TextBuffer::default());
-    element.set_color(Color::from_hex(0x002b36));
-    element.set_highlight_data(buffer, styles);
-    element.buffer().unwrap().set_text(value);
-}
-
-fn button(flex: &mut Flex) -> Button {
-    let mut element = Button::default().with_label("@#search");
-    element.set_label_size(18);
-    flex.fixed(&element, HEIGHT);
-    element
+                false
+            }
+        });
+    )
 }
 
 fn input(value: &str) -> InputChoice {
@@ -171,20 +153,38 @@ fn input(value: &str) -> InputChoice {
     element
 }
 
-pub fn fill_style_buffer(s: &str) -> String {
-    let mut buffer = vec![b'A'; s.len()];
-    for token in Lexer::new(s.bytes(), BufferType::Span) {
+fn build_display(tooltip: &str, value: &str) -> TextDisplay {
+    cascade!(
+        TextDisplay::default();
+        ..set_tooltip(tooltip);
+        ..set_linenumber_width(0);
+        ..set_buffer(TextBuffer::default());
+        ..buffer().unwrap().set_text(value);
+        ..wrap_mode(WrapMode::AtBounds, 0);
+        ..set_trigger(CallbackTrigger::Changed);
+        ..set_callback(add_highlight);
+        ..do_callback();
+    )
+}
+
+fn add_highlight(display: &mut TextDisplay) {
+    let text = display.buffer().unwrap().text();
+    let styles: Vec<StyleTableEntry> = [0xdc322f, 0x268bd2, 0x859900]
+        .into_iter()
+        .map(|color| StyleTableEntry {
+            color: Color::from_hex(color),
+            font: Font::CourierBold,
+            size: 16,
+        })
+        .collect();
+    let mut buffer = vec![b'A'; text.len()];
+    for token in Lexer::new(text.bytes(), BufferType::Span) {
+        use TokenType::*;
         let c = match token.kind {
-            TokenType::CurlyOpen
-            | TokenType::CurlyClose
-            | TokenType::BracketOpen
-            | TokenType::BracketClose
-            | TokenType::Colon
-            | TokenType::Comma
-            | TokenType::Invalid => 'A',
-            TokenType::String => 'B',
-            TokenType::BooleanTrue | TokenType::BooleanFalse | TokenType::Null => 'C',
-            TokenType::Number => 'D',
+            CurlyOpen | CurlyClose | BracketOpen | BracketClose | Colon | Comma | Invalid => 'A',
+            String => 'B',
+            BooleanTrue | BooleanFalse | Null => 'C',
+            Number => 'D',
         };
         if let Buffer::Span(Span { first, end }) = token.buf {
             let start = first as _;
@@ -192,7 +192,10 @@ pub fn fill_style_buffer(s: &str) -> String {
             buffer[start..last].copy_from_slice(c.to_string().repeat(last - start).as_bytes());
         }
     }
-    String::from_utf8_lossy(&buffer).to_string()
+    let mut buf = TextBuffer::default();
+    buf.set_text(&String::from_utf8_lossy(&buffer));
+    display.scroll(text.split_whitespace().count() as i32, 0);
+    display.set_highlight_data(buf, styles);
 }
 
 const SPINNER: Event = Event::from_i32(405);

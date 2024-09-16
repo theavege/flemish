@@ -13,7 +13,7 @@ license = "MIT"
 exclude = ["./examples"]
 
 [dependencies]
+cascade = "1.0.1"
 fltk = { version = "1.4" }
 fltk-theme = "0.7"
-fltk-table = "0.3"
-fltk-grid = "0.4"
+fltk-calendar = "0"

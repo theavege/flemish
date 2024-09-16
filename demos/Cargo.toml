@@ -11,8 +11,6 @@ members = [
     "flightbooker",
     "resters",
     "sudokusolver",
-    "text",
-    "todo",
 ]
 
 [profile.release]

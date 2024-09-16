@@ -65,18 +65,15 @@ pub enum Message {
 
 impl Sandbox for Model {
     type Message = Message;
-
+    fn new() -> Self {
+        Model::default()
+    }
     fn title(&self) -> String {
         format!(
             "Translate from {} to {} - {NAME}",
             self.lang[self.from as usize]["name"], self.lang[self.to as usize]["name"]
         )
     }
-
-    fn new() -> Self {
-        Model::default()
-    }
-
     fn view(&mut self) {
         let mut wizard = Wizard::default_fill();
         {

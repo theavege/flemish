@@ -22,23 +22,14 @@ pub struct Price {
 
 const DIR: &str = "../assets/historical_data";
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Model {
     pub cash: HashMap<String, Vec<Price>>,
     pub temp: Vec<String>,
     pub curr: usize,
-    pub save: bool,
 }
 
 impl Model {
-    pub fn default() -> Self {
-        Self {
-            cash: HashMap::new(),
-            temp: Vec::new(),
-            save: false,
-            curr: 0,
-        }
-    }
     pub fn init(&mut self) {
         for file in std::fs::read_dir(DIR).unwrap() {
             let entry = file.unwrap().file_name().into_string().unwrap();
@@ -52,8 +43,7 @@ impl Model {
     pub fn choice(&mut self, curr: usize) {
         if self.cash.contains_key(&self.temp[curr]) {
             self.curr = curr;
-        } else if let Ok(data) = fs::read(format!("{DIR}/{}.csv", self.temp[curr]))
-        {
+        } else if let Ok(data) = fs::read(format!("{DIR}/{}.csv", self.temp[curr])) {
             let mut prices: Vec<Price> = Vec::new();
             for result in Reader::from_reader(data.as_slice()).deserialize() {
                 prices.push(result.unwrap());

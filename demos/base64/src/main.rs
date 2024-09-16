@@ -2,6 +2,7 @@ mod model;
 
 use {
     flemish::{
+        cascade,
         color_themes,
         enums::{CallbackTrigger, Event, Font},
         frame::Frame,
@@ -18,9 +19,9 @@ const PAD: i32 = 10;
 const NAME: &str = "FlBase64";
 
 #[derive(Clone)]
-pub enum Message {
-    Encode(String),
-    Decode(String),
+pub enum Msg {
+    Enc(String),
+    Dec(String),
 }
 
 fn main() {
@@ -35,7 +36,7 @@ fn main() {
 }
 
 impl Sandbox for Model {
-    type Message = Message;
+    type Message = Msg;
 
     fn new() -> Self {
         Self::default()
@@ -46,42 +47,50 @@ impl Sandbox for Model {
     }
 
     fn view(&mut self) {
-        let mut page = Flex::default_fill();
-        {
-            crate::build_editor("Normal text", self.decode())
-                .on_event(move |text| Message::Decode(text.buffer().unwrap().text()));
-            Frame::default();
-            crate::build_editor("Base64 text", self.encode())
-                .on_event(move |text| Message::Encode(text.buffer().unwrap().text()));
-        }
-        page.end();
-        page.set_pad(0);
-        page.set_margin(PAD);
-        page.handle(crate::resize);
-        page.child(self.focus()).unwrap().take_focus().unwrap();
-        crate::resize(&mut page, Event::Resize);
+        cascade!(
+            Flex::default_fill();
+            ..set_pad(0);
+            ..set_margin(PAD);
+            ..add(&cascade!(
+                build_editor("Normal text", self.decode());
+                ..clone().on_event(move |text| Msg::Dec(text.buffer().unwrap().text()));
+            ));
+            ..add(&Frame::default());
+            ..add(&cascade!(
+                build_editor("Base64 text", self.encode());
+                ..clone().on_event(move |text| Msg::Enc(text.buffer().unwrap().text()));
+            ));
+            ..handle(crate::resize);
+            ..handle_event(Event::Resize);
+            ..end();
+        )
+        .child(self.focus())
+        .unwrap()
+        .take_focus()
+        .unwrap();
     }
 
-    fn update(&mut self, message: Message) {
+    fn update(&mut self, message: Msg) {
         match message {
-            Message::Decode(value) => self.set_decode(value),
-            Message::Encode(value) => self.set_encode(value),
+            Msg::Dec(value) => self.set_decode(value),
+            Msg::Enc(value) => self.set_encode(value),
         }
     }
 }
 
 fn build_editor(tooltip: &str, value: &str) -> TextEditor {
-    let mut element = TextEditor::default();
-    element.set_tooltip(tooltip);
-    element.set_linenumber_width(0);
-    element.set_buffer(TextBuffer::default());
-    element.buffer().unwrap().set_text(value);
-    element.wrap_mode(WrapMode::AtBounds, 0);
-    element.set_text_size(16);
-    element.kf_end();
-    element.set_text_font(Font::CourierBold);
-    element.set_trigger(CallbackTrigger::Changed);
-    element
+    cascade!(
+        TextEditor::default();
+        ..set_tooltip(tooltip);
+        ..set_linenumber_width(0);
+        ..set_buffer(TextBuffer::default());
+        ..buffer().unwrap().set_text(value);
+        ..wrap_mode(WrapMode::AtBounds, 0);
+        ..set_text_size(16);
+        ..kf_end();
+        ..set_text_font(Font::CourierBold);
+        ..set_trigger(CallbackTrigger::Changed);
+    )
 }
 
 fn resize(flex: &mut Flex, event: Event) -> bool {

@@ -22,14 +22,14 @@ struct Model {
 }
 
 #[derive(Clone, Copy)]
-enum Message {
+enum Msg {
     DefaultToggled(bool),
     CustomToggled(bool),
     StyledToggled(bool),
 }
 
 impl Sandbox for Model {
-    type Message = Message;
+    type Message = Msg;
 
     fn new() -> Self {
         Self {
@@ -50,24 +50,24 @@ impl Sandbox for Model {
             .column();
         {
             crate::check(self.default)
-                .on_event(move |check| Message::DefaultToggled(check.value()));
-            crate::check(self.styled).on_event(move |check| Message::StyledToggled(check.value()));
-            crate::check(self.custom).on_event(move |check| Message::CustomToggled(check.value()));
+                .on_event(move |check| Msg::DefaultToggled(check.value()));
+            crate::check(self.styled).on_event(move |check| Msg::StyledToggled(check.value()));
+            crate::check(self.custom).on_event(move |check| Msg::CustomToggled(check.value()));
         }
         page.end();
         page.set_pad(PAD);
         page.set_frame(FrameType::UpBox);
     }
 
-    fn update(&mut self, message: Message) {
+    fn update(&mut self, message: Msg) {
         match message {
-            Message::DefaultToggled(value) => {
+            Msg::DefaultToggled(value) => {
                 self.default = value;
             }
-            Message::StyledToggled(value) => {
+            Msg::StyledToggled(value) => {
                 self.styled = value;
             }
-            Message::CustomToggled(value) => {
+            Msg::CustomToggled(value) => {
                 self.custom = value;
             }
         }
