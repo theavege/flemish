@@ -22,10 +22,10 @@ pub struct Price {
 
 const DIR: &str = "../assets/historical_data";
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Model {
     pub cash: HashMap<String, Vec<Price>>,
-    pub temp: Vec<String>,
+    pub list: Vec<String>,
     pub curr: usize,
 }
 
@@ -34,22 +34,23 @@ impl Model {
         for file in std::fs::read_dir(DIR).unwrap() {
             let entry = file.unwrap().file_name().into_string().unwrap();
             if entry.ends_with(".csv") {
-                self.temp
+                self.list
                     .push(entry.strip_suffix(".csv").unwrap().to_string());
             }
-            self.choice(0);
+            self.choice(self.curr);
         }
     }
-    pub fn choice(&mut self, curr: usize) {
-        if self.cash.contains_key(&self.temp[curr]) {
+    pub fn choice(&mut self, curr: usize) -> bool {
+        if self.cash.contains_key(&self.list[curr]) {
             self.curr = curr;
-        } else if let Ok(data) = fs::read(format!("{DIR}/{}.csv", self.temp[curr])) {
+        } else if let Ok(data) = fs::read(format!("{DIR}/{}.csv", self.list[curr])) {
             let mut prices: Vec<Price> = Vec::new();
             for result in Reader::from_reader(data.as_slice()).deserialize() {
                 prices.push(result.unwrap());
             }
-            self.cash.insert(self.temp[curr].clone(), prices);
+            self.cash.insert(self.list[curr].clone(), prices);
             self.curr = curr;
         }
+        true
     }
 }

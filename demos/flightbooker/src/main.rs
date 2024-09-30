@@ -5,9 +5,8 @@ mod model;
 use {
     chrono::prelude::*,
     flemish::{
-        button::Button, cascade, color_themes, dialog::alert_default, enums::FrameType,
-        frame::Frame, group::Flex, menu::Choice, output::Output, prelude::*, Calendar, OnEvent,
-        Sandbox, Settings,
+        button::Button, cascade, dialog::alert_default, enums::FrameType, frame::Frame, glib,
+        group::Flex, menu::Choice, mpsc, output::Output, prelude::*, Calendar, Sandbox, Settings,
     },
     model::Model,
 };
@@ -15,7 +14,6 @@ use {
 pub fn main() {
     Model::new().run(Settings {
         size: (640, 360),
-        color_map: Some(color_themes::DARK_THEME),
         ..Default::default()
     })
 }
@@ -44,7 +42,7 @@ impl Sandbox for Model {
         Self::default()
     }
 
-    fn view(&mut self) {
+    fn view(&mut self, sender: mpsc::Sender<Msg>) -> Flex {
         cascade!(
             Flex::default().with_size(PAD * 26, PAD * 17).center_of_parent();
             ..set_pad(PAD);
@@ -57,36 +55,42 @@ impl Sandbox for Model {
                     Choice::default().with_label("Direct");
                     ..add_choice("one-way flight|return flight");
                     ..set_value(self.direct);
-                    ..clone().on_event(move |choice| Msg::Direct(choice.value()));
+                    ..set_callback(glib::clone!(#[strong] sender, move |choice| {
+                        sender.send(Msg::Direct(choice.value())).unwrap();
+                    }));
                 ), HEIGHT);
                 ..fixed(&cascade!(
                     crate::input(&self.start, self.start_active).with_label("Start");
-                    ..clone().on_event(move |_| {
+                    ..set_callback(glib::clone!(#[strong] sender, move |_| {
                         if let Some(date) = Calendar::default().get_date() {
-                            Msg::Start(format!("{}-{}-{}", date.year(), date.month(), date.day()));
+                            let value = format!("{}-{}-{}", date.year(), date.month(), date.day());
+                            sender.send(Msg::Start(value)).unwrap();
                         }
-                    });
+                    }));
                 ), HEIGHT);
                 ..fixed(&cascade!(
                     crate::input(&self.back, self.back_active).with_label("Back");
-                    ..clone().on_event(move |_| {
+                    ..set_callback(glib::clone!(#[strong] sender, move |_| {
                         if let Some(date) = Calendar::default().get_date() {
-                            Msg::Back(format!("{}-{}-{}", date.year(), date.month(), date.day()));
+                            let value = format!("{}-{}-{}", date.year(), date.month(), date.day());
+                            sender.send(Msg::Back(value)).unwrap();
                         }
-                    });
+                    }));
                 ), HEIGHT);
                 ..fixed(&cascade!(
                     crate::button(self.book_active).with_label("Book");
-                        ..clone().on_event(move |_| Msg::Book);
+                    ..set_callback(glib::clone!(#[strong] sender, move |_| {
+                        sender.send(Msg::Book).unwrap();
+                    }));
                 ), HEIGHT);
                 ..end();
                 ..set_pad(PAD);
             ));
+            ..end();
         )
-        .end();
     }
 
-    fn update(&mut self, message: Msg) {
+    fn update(&mut self, message: Msg) -> bool {
         match message {
             Msg::Direct(value) => self.direct(value),
             Msg::Start(value) => self.start(value),
@@ -100,6 +104,7 @@ impl Sandbox for Model {
                         self.start, self.back
                     )
                 });
+                false
             }
         }
     }

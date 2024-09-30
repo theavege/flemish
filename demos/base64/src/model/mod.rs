@@ -21,20 +21,22 @@ impl Model {
     pub fn encode(&self) -> &String {
         &self.encode
     }
-    pub fn set_encode(&mut self, value: String) {
+    pub fn set_encode(&mut self, value: String) -> bool {
         self.encode = value;
         self.decode = match general_purpose::STANDARD.decode(&self.encode) {
             Ok(decode) => String::from_utf8(decode).unwrap(),
             Err(error) => format!("{}", error),
         };
         self.focus = 2;
+        true
     }
     pub fn focus(&self) -> i32 {
         self.focus
     }
-    pub fn set_decode(&mut self, value: String) {
+    pub fn set_decode(&mut self, value: String) -> bool {
         self.decode = value;
         self.encode = general_purpose::STANDARD.encode(&self.decode);
         self.focus = 0;
+        true
     }
 }

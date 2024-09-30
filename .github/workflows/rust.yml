@@ -49,29 +49,8 @@ jobs:
         cmake --build bin --parallel --target install
         export CFLTK_BUNDLE_DIR="${PWD}/bin/lib"
       shell: bash
-    - name: Build cairo
-      working-directory: demos/cairo
-      shell: bash
-      run: |
-        if [[ ${RUNNER_OS} == "Linux" ]]; then
-            cargo build --quiet || cargo build --verbose
-        fi
     - name: Build base64
       working-directory: demos/base64
-      shell: bash
-      run: |
-        if [[ ${RUNNER_OS} == "Linux" ]]; then
-            cargo build --quiet || cargo build --verbose
-        fi
-    - name: Build cairo_shadow_button
-      working-directory: demos/cairo_shadow_button
-      shell: bash
-      run: |
-        if [[ ${RUNNER_OS} == "Linux" ]]; then
-            cargo build --quiet || cargo build --verbose
-        fi
-    - name: Build calculator
-      working-directory: demos/calculator
       shell: bash
       run: |
         if [[ ${RUNNER_OS} == "Linux" ]]; then
@@ -84,29 +63,8 @@ jobs:
         if [[ ${RUNNER_OS} == "Linux" ]]; then
             cargo build --quiet || cargo build --verbose
         fi
-    - name: Build dialect
-      working-directory: demos/dialect
-      shell: bash
-      run: |
-        if [[ ${RUNNER_OS} == "Linux" ]]; then
-            cargo build --quiet || cargo build --verbose
-        fi
     - name: Build flightbooker
       working-directory: demos/flightbooker
-      shell: bash
-      run: |
-        if [[ ${RUNNER_OS} == "Linux" ]]; then
-            cargo build --quiet || cargo build --verbose
-        fi
-    - name: Build resters
-      working-directory: demos/resters
-      shell: bash
-      run: |
-        if [[ ${RUNNER_OS} == "Linux" ]]; then
-            cargo build --quiet || cargo build --verbose
-        fi
-    - name: Build sudokusolver
-      working-directory: demos/sudokusolver
       shell: bash
       run: |
         if [[ ${RUNNER_OS} == "Linux" ]]; then

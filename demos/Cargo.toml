@@ -3,14 +3,8 @@
 resolver = "2"
 members = [
     "base64",
-    "cairo",
-    "cairo_shadow_button",
-    "calculator",
     "csv",
-    "dialect",
     "flightbooker",
-    "resters",
-    "sudokusolver",
 ]
 
 [profile.release]

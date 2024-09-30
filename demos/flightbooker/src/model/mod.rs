@@ -10,17 +10,17 @@ pub struct Model {
 }
 
 impl Model {
-    pub fn direct(&mut self, value: i32) {
+    pub fn direct(&mut self, value: i32) -> bool {
         self.direct = value;
-        self.refresh();
+        self.refresh()
     }
-    pub fn start(&mut self, value: String) {
+    pub fn start(&mut self, value: String) -> bool {
         self.start = value;
-        self.refresh();
+        self.refresh()
     }
-    pub fn back(&mut self, value: String) {
+    pub fn back(&mut self, value: String) -> bool {
         self.back = value;
-        self.refresh();
+        self.refresh()
     }
     pub fn default() -> Self {
         let current = Local::now()
@@ -37,7 +37,7 @@ impl Model {
             book_active: false,
         }
     }
-    pub fn refresh(&mut self) {
+    pub fn refresh(&mut self) -> bool {
         if self.direct == 0 {
             self.back_active = false;
             self.book_active = get_date(&self.start).is_ok();
@@ -48,7 +48,8 @@ impl Model {
             self.book_active = start_date.is_ok()
                 && back_date.is_ok()
                 && start_date.unwrap() <= back_date.unwrap();
-        }
+        };
+        true
     }
 }
 

@@ -3,17 +3,19 @@
 mod model;
 
 use {
+    ::image::{ImageBuffer, RgbImage},
     flemish::{
-        cascade,
-        browser::{Browser, BrowserType},
-        button::Button,
-        color_themes, draw,
+        cascade, draw,
         enums::{Color, FrameType},
         frame::Frame,
+        glib,
         group::Flex,
         image::SvgImage,
+        menu::Choice,
+        mpsc,
         prelude::*,
-        OnEvent, Sandbox, Settings,
+        surface::ImageSurface,
+        Sandbox, Settings,
     },
     model::Model,
 };
@@ -26,10 +28,8 @@ const WIDTH: i32 = HEIGHT * 3;
 pub fn main() {
     Model::new().run(Settings {
         size: (640, 360),
-        resizable: true,
         xclass: Some(String::from(NAME)),
         icon: Some(SvgImage::from_data(include_str!("../../assets/logo.svg")).unwrap()),
-        color_map: Some(color_themes::DARK_THEME),
         ..Default::default()
     })
 }
@@ -37,7 +37,6 @@ pub fn main() {
 #[derive(Clone)]
 pub enum Msg {
     Choice(usize),
-    Save,
 }
 
 impl Sandbox for Model {
@@ -48,55 +47,42 @@ impl Sandbox for Model {
     }
 
     fn new() -> Self {
-        Self::default()
+        cascade!(
+            Self::default();
+            ..init();
+        )
     }
 
-    fn view(&mut self) {
+    fn view(&mut self, sender: mpsc::Sender<Msg>) -> Flex {
         cascade!(
             Flex::default_fill();
             ..set_pad(PAD);
             ..set_margin(PAD);
             ..fixed(&cascade!(
-                Flex::default_fill()
-                .column();
+                Flex::default_fill().column();
                 ..set_pad(PAD);
-                ..add(&cascade!(
-                    crate::browser("Browser", self.clone());
-                    ..clone().on_event(move |browser| {
-                        Msg::Choice((browser.value() as usize).saturating_sub(1))
-                    });
-                ));
+                ..add(&Frame::default());
                 ..fixed(&cascade!(
-                    Button::default();
-                    ..set_label("@#refresh");
-                    ..set_tooltip("Load image");
-                    ..clone().on_event(move |_| Msg::Save);
+                    Choice::default();
+                    ..set_tooltip("Browser");
+                    ..add_choice(&self.list.join("|"));
+                    ..set_value(self.curr as i32);
+                    ..set_callback(glib::clone!(#[strong] sender, move |choice| {
+                        sender.send(Msg::Choice(choice.value() as usize)).unwrap();
+                    }));
                 ), HEIGHT);
                 ..end();
             ), WIDTH);
             ..add(&frame("Canvas", self.clone()));
+            ..end();
         )
-        .end();
     }
 
-    fn update(&mut self, message: Msg) {
+    fn update(&mut self, message: Msg) -> bool {
         match message {
-            Msg::Save => self.init(),
             Msg::Choice(value) => self.choice(value),
         }
     }
-}
-
-fn browser(tooltip: &str, value: Model) -> Browser {
-    let mut element = Browser::default().with_type(BrowserType::Hold);
-    element.set_tooltip(tooltip);
-    if !value.temp.is_empty() {
-        for item in value.temp {
-            element.add(&item);
-        }
-        element.select(value.curr as i32 + 1);
-    }
-    element
 }
 
 fn frame(tooltip: &str, value: Model) -> Frame {
@@ -104,10 +90,11 @@ fn frame(tooltip: &str, value: Model) -> Frame {
         Frame::default();
         ..set_frame(FrameType::DownBox);
         ..set_tooltip(tooltip);
-        ..set_color(Color::Black);
+        ..set_color(Color::Background2);
+        ..set_callback(add_save);
         ..draw(move |frame| {
-            if !value.temp.is_empty() {
-                if let Some(data) = value.cash.get(&value.temp[value.curr]) {
+            if !value.list.is_empty() {
+                if let Some(data) = value.cash.get(&value.list[value.curr]) {
                     let mut highest = data
                         .iter()
                         .map(|elem| elem.low)
@@ -126,14 +113,12 @@ fn frame(tooltip: &str, value: Model) -> Frame {
                             let low = frame.h() - (elem.low * factor) as i32;
                             let close = frame.h() - (elem.close * factor) as i32;
                             draw::draw_line(idx, high, idx, low);
-                            let col = if close > open {
-                                Color::Red
-                            } else {
-                                Color::Green
-                            };
-                            draw::set_draw_color(col);
+                            draw::set_draw_color(match close > open {
+                                true => Color::Red,
+                                false => Color::Green,
+                            });
                             draw::draw_rectf(idx - 2, open, 4, i32::abs(close - open));
-                            draw::set_draw_color(Color::White);
+                            draw::set_draw_color(Color::Blue);
                             idx += step;
                         }
                     };
@@ -141,4 +126,19 @@ fn frame(tooltip: &str, value: Model) -> Frame {
             }
         });
     )
+}
+
+fn add_save(frame: &mut Frame) {
+    let sur = ImageSurface::new(frame.w(), frame.h(), false);
+    ImageSurface::push_current(&sur);
+    draw::set_draw_color(Color::White);
+    draw::draw_rectf(0, 0, frame.w(), frame.h());
+    sur.draw(frame, 0, 0);
+    let img = sur.image().unwrap();
+    ImageSurface::pop_current();
+    let mut imgbuf: RgbImage = ImageBuffer::new(frame.w() as _, frame.h() as _); // this is from the image crate
+    imgbuf.copy_from_slice(&img.to_rgb_data());
+    imgbuf
+        .save(frame.window().unwrap().label() + ".jpg")
+        .unwrap();
 }

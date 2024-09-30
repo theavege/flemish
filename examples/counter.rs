@@ -1,76 +1,77 @@
 #![forbid(unsafe_code)]
 
 use flemish::{
-    app, button::Button, color_themes, enums::FrameType, frame::Frame, group::Flex, prelude::*,
-    OnEvent, Sandbox, Settings,
+    button::Button, cascade, enums::FrameType, frame::Frame, glib, group::Flex, mpsc, prelude::*,
+    Sandbox, Settings,
 };
 
 pub fn main() {
     Model::new().run(Settings {
         size: (640, 360),
-        color_map: Some(color_themes::DARK_THEME),
         ..Default::default()
     })
 }
 
 #[derive(Debug, Clone, Copy)]
-enum Message {
+enum Msg {
     Inc,
     Dec,
 }
 
+#[derive(Default)]
 struct Model {
     value: u8,
 }
 
-impl Model {
-    fn default() -> Self {
-        Self { value: 0u8 }
-    }
-    fn inc(&mut self) {
-        self.value = self.value.saturating_add(1);
-    }
-    fn dec(&mut self) {
-        self.value = self.value.saturating_sub(1);
-    }
-    fn value(&self) -> String {
-        self.value.to_string()
-    }
-}
-
 impl Sandbox for Model {
-    type Message = Message;
+    type Message = Msg;
 
     fn new() -> Self {
         Self::default()
     }
 
     fn title(&self) -> String {
-        format!("{} - 7GUI: Counter", self.value())
+        format!("{} - 7GUI: Counter", self.value)
     }
 
-    fn view(&mut self) {
-        let mut page = Flex::default().with_size(300, 100).center_of_parent();
-        {
-            Button::default()
-                .with_label("@#<")
-                .on_event(|_| Message::Dec);
-            Frame::default()
-                .with_label(&self.value.to_string())
-                .set_frame(FrameType::UpBox);
-            Button::default()
-                .with_label("@#>")
-                .on_event(|_| Message::Inc);
-        }
-        page.end();
-        page.set_pad(0);
-        page.set_margin(10);
+    fn view(&mut self, sender: mpsc::Sender<Msg>) -> Flex {
+        cascade!(
+            Flex::default().with_size(300, 100).center_of_parent();
+            ..set_margin(10);
+            ..set_pad(0);
+            ..add(&cascade!(
+                Button::default().with_label("@#<");
+                ..set_label_size(30);
+                ..set_callback(glib::clone!(#[strong] sender, move |_| {
+                    sender.send(Msg::Dec).unwrap();
+                }));
+            ));
+            ..add(&cascade!(
+                Frame::default().with_label(&self.value.to_string());
+                ..set_frame(FrameType::UpBox);
+                ..set_label_size(30);
+            ));
+            ..add(&cascade!(
+                Button::default().with_label("@#>");
+                ..set_label_size(30);
+                ..set_callback(glib::clone!(#[strong] sender, move |_| {
+                    sender.send(Msg::Inc).unwrap();
+                }));
+            ));
+            ..end();
+        )
     }
 
-    fn update(&mut self, message: Message) {
+    fn update(&mut self, message: Msg) -> bool {
         match message {
-            Message::Inc => self.inc(),
-            Message::Dec => self.dec(),
+            Msg::Dec => {
+                self.value = self.value.saturating_sub(1);
+                true
+            }
+            Msg::Inc => {
+                self.value = self.value.saturating_add(1);
+                true
+            }
         }
     }
 }
